@@ -1,0 +1,54 @@
+# Файлы с чувствительными данными
+.env
+*.env
+config.py
+secrets.py
+
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.bak
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Питоновские специфичные файлы
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+
+# Базы данных (если используются SQLite и т.д.)
+*.db
+*.sqlite
+*.sqlite3
+
+# Jupyter Notebook (если есть)
+.ipynb_checkpoints/
+*.ipynb
+
+# Тестовые данные (если есть)
+test_data/
+
+# JetBrains IDE
+.idea/
+*.iml
+*.ipr
+*.iws
