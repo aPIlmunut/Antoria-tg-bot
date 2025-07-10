@@ -22,7 +22,7 @@ from db_operations import (
     set_current_position, get_current_position
 )
 from text_operations import load_text
-from kb_operations import get_main_kb, get_start_kb, get_start_confirme_kb, get_trips_kb
+from kb_operations import get_main_kb, get_start_kb, get_start_confirme_kb, get_trips_kb, get_actions_kb
 from dotenv import load_dotenv
 import os
 
@@ -209,7 +209,7 @@ async def race_choice(callback: types.CallbackQuery):
     await callback.answer()
 
 
-@dp.message(F.text.in_(["🎒 путешествия", "🌐 Карта", "⚔️ Войны", "📊 Статистика"]))
+@dp.message(F.text.in_(["🎒 путешествия", "🌐 Карта", "📋 действия", "📊 Статистика"]))
 async def handle_menu_buttons(message: types.Message):
     user_id = message.from_user.id
     if get_is_race_selected(user_id) == "❌ нет":
@@ -233,8 +233,12 @@ async def handle_menu_buttons(message: types.Message):
                await message.answer("❌ Не удалось загрузить карту")
                print(f"Ошибка загрузки карты: {e}")
 
-    elif message.text == "⚔️ Войны":
-            await message.answer("Информация о текущих войнах...")
+    elif message.text == "📋 действия":
+        await message.answer(
+            text="доступные действия:",
+            reply_markup=get_actions_kb(user_id),
+            parse_mode="HTML"
+        )
 
     elif message.text == "📊 Статистика":
             await message.answer("Ваша статистика...")
@@ -243,62 +247,49 @@ async def handle_menu_buttons(message: types.Message):
 async def handle_travel_choice(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     travel_location = callback.data.split("_")[1]
+
+    # Устанавливаем новую позицию
     if travel_location == "field":
         set_current_position(user_id, "🌾 поле")
-        try:
-            photo_path = "pictures/field_photo.jpg"
-            photo = FSInputFile(photo_path)
-
-            # Создаем медиа объект с новым фото
-            media = types.InputMediaPhoto(
-                media=photo,
-                caption="Ты пришел в поле",
-                parse_mode="HTML"
-            )
-
-            # Редактируем сообщение с новым фото
-            await callback.message.edit_media(
-                  media=media
-            )
-
-        except FileNotFoundError:
-            logger.error(f"❌ Файл не найден: {photo_path}")
-            # Если фото не найдено, просто редактируем текст
-            await callback.message.edit_caption(
-                caption="Ты пришел в поле",
-                parse_mode="HTML"
-            )
-    if travel_location == "colony":
+        new_caption = "Ты пришел в поле"
+        photo_path = "pictures/field_photo.jpg"
+    elif travel_location == "colony":
         set_current_position(user_id, "🏰 колония")
-        try:
-            photo_race = {
-                "🌾 Жнецы": "pictures/reaper_photo.jpeg",
-                "⚔️ Бульдоги": "pictures/bulldog_photo.jpeg",
-                "🍃 листорезы": "pictures/leaf_cutter_photo.jpeg"
-            }
-            photo_path = photo_race[get_race(user_id)]
-            photo = FSInputFile(photo_path)
+        new_caption = "Ты вернулся в колонию"
+        photo_race = {
+            "🌾 Жнецы": "pictures/reaper_photo.jpeg",
+            "⚔️ Бульдоги": "pictures/bulldog_photo.jpeg",
+            "🍃 листорезы": "pictures/leaf_cutter_photo.jpeg"
+        }
+        photo_path = photo_race[get_race(user_id)]
+    else:
+        await callback.answer("❌ Неизвестная локация")
+        return
 
-            # Создаем медиа объект с новым фото
-            media = types.InputMediaPhoto(
-                media=photo,
-                caption="Ты вернулся в колонию",
-                parse_mode="HTML"
-            )
+    try:
+        photo = FSInputFile(photo_path)
+        media = types.InputMediaPhoto(
+            media=photo,
+            caption=new_caption,
+            parse_mode="HTML"
+        )
 
-            # Редактируем сообщение с новым фото
-            await callback.message.edit_media(
-                  media=media
-            )
-
-        except FileNotFoundError:
-            logger.error(f"❌ Файл не найден: {photo_path}")
-            # Если фото не найдено, просто редактируем текст
-            await callback.message.edit_caption(
-                caption="Ты вернулся в колонию",
-                parse_mode="HTML"
-            )
-
+        # Редактируем сообщение (фото + текст + клавиатура)
+        await callback.message.edit_media(
+            media=media,
+        )
+    except FileNotFoundError:
+        logger.error(f"❌ Файл не найден: {photo_path}")
+        # Если фото не найдено, меняем только текст и клавиатуру
+        await callback.message.edit_caption(
+            caption=new_caption,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logger.error(f"❌ Ошибка при редактировании сообщения: {e}")
+        await callback.answer("⚠️ Произошла ошибка", show_alert=True)
+    finally:
+        await callback.answer()
 
 async def main():
     init_db()

@@ -14,7 +14,7 @@ from db_operations import get_race, get_current_position, set_current_position
 def get_main_kb():
     buttons = [
         [KeyboardButton(text="🎒 путешествия")],
-        [KeyboardButton(text="⚔️ Войны"), KeyboardButton(text="🌐 Карта")],
+        [KeyboardButton(text="📋 действия"), KeyboardButton(text="🌐 Карта")],
         [KeyboardButton(text="📊 Статистика")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
@@ -54,4 +54,18 @@ def get_trips_kb(user_id):
                 types.InlineKeyboardButton(text="🏰 колония", callback_data="travel_colony")
             )
             builder.adjust(1)
+    return builder.as_markup()
+
+def get_actions_kb(user_id):
+    builder = InlineKeyboardBuilder()
+    if get_current_position(user_id) == "🏰 колония":
+         builder.add(
+         types.InlineKeyboardButton(text="просмотреть заказ королевы", callback_data="view_orders")
+         )
+         builder.adjust(1)
+    if get_current_position(user_id) == "🌾 поле":
+        builder.add(
+            types.InlineKeyboardButton(text="🔎 искать зерно", callback_data="look for graingrain")
+        )
+        builder.adjust(1)
     return builder.as_markup()
