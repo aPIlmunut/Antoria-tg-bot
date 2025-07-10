@@ -23,6 +23,7 @@ from db_operations import (
 )
 from text_operations import load_text
 from kb_operations import get_main_kb, get_start_kb, get_start_confirme_kb, get_trips_kb, get_actions_kb
+from questions_db_operations import init_questions_db
 from dotenv import load_dotenv
 import os
 
@@ -293,6 +294,7 @@ async def handle_travel_choice(callback: types.CallbackQuery):
 
 async def main():
     init_db()
+    init_questions_db()
     print("🤖 Бот запущен...")
     await dp.start_polling(bot)
 
