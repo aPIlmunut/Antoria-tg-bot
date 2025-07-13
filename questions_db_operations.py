@@ -12,7 +12,10 @@ def init_questions_db():
         CREATE TABLE IF NOT EXISTS questions (
             subject TEXT DEFAULT '0',
             question TEXT DEFAULT '0',
-            answer TEXT DEFAULT '0'
+            explanation TEXT DEFAULT '0',
+            answer TEXT DEFAULT '0',
+            first_wrong_answer TEXT DEFAULT '0',
+            second_wrong_answer TEXT DEFAULT '0'
         )
     ''')
     conn.commit()
@@ -20,20 +23,28 @@ def init_questions_db():
 
 
 def get_random_question_by_subject(subject):
+    """
+    Возвращает случайный вопрос, правильный ответ, два неправильных ответа и объяснение по указанному предмету
+
+    :param subject: Название предмета для фильтрации вопросов
+    :return: Кортеж (question, answer, first_wrong_answer, second_wrong_answer, explanation)
+             или None, если вопросы не найдены
+    """
     try:
         conn = sqlite3.connect('questions.db')
         cursor = conn.cursor()
 
-        # Сначала получаем все вопросы по предмету
+        # Получаем все данные вопроса по предмету
         cursor.execute('''
-            SELECT question, answer FROM questions 
+            SELECT question, answer, first_wrong_answer, second_wrong_answer, explanation 
+            FROM questions 
             WHERE subject = ?
         ''', (subject,))
 
         questions = cursor.fetchall()
 
         if not questions:
-            logger.warning(f"No questions found for subject: {subject}")
+            logger.warning(f"❌ Вопросы для предмета: {subject} не найдены")
             return None
 
         # Выбираем случайный вопрос
@@ -41,7 +52,7 @@ def get_random_question_by_subject(subject):
         return random_question
 
     except sqlite3.Error as e:
-        logger.error(f"Database error: {e}")
+        logger.error(f"❌ Ошибка базы данных вопросов: {e}")
         return None
     finally:
         if conn:

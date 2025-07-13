@@ -9,6 +9,7 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from db_operations import get_race, get_current_position, set_current_position
+from random import shuffle
 
 
 def get_main_kb():
@@ -65,7 +66,22 @@ def get_actions_kb(user_id):
          builder.adjust(1)
     if get_current_position(user_id) == "🌾 поле":
         builder.add(
-            types.InlineKeyboardButton(text="🔎 искать зерно", callback_data="look for graingrain")
+            types.InlineKeyboardButton(text="🔎 искать зерно", callback_data="look_for_grain")
         )
         builder.adjust(1)
+    return builder.as_markup()
+
+def get_answers_kb(answer, wrong1, wrong2):
+    answers = [answer, wrong1, wrong2]
+    shuffle(answers)
+    right_answer_position = answers.index(answer)
+    callback_data_list = ["wrong_answer", "wrong_answer", "wrong_answer"]
+    callback_data_list[right_answer_position] = "right_answer"
+    builder = InlineKeyboardBuilder()
+    builder.add(
+        types.InlineKeyboardButton(text=answers[0], callback_data=callback_data_list[0]),
+        types.InlineKeyboardButton(text=answers[1], callback_data=callback_data_list[1]),
+        types.InlineKeyboardButton(text=answers[2], callback_data=callback_data_list[2])
+    )
+    builder.adjust(3)
     return builder.as_markup()

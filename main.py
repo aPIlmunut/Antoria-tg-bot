@@ -22,8 +22,8 @@ from db_operations import (
     set_current_position, get_current_position
 )
 from text_operations import load_text
-from kb_operations import get_main_kb, get_start_kb, get_start_confirme_kb, get_trips_kb, get_actions_kb
-from questions_db_operations import init_questions_db
+from kb_operations import get_main_kb, get_start_kb, get_start_confirme_kb, get_trips_kb, get_actions_kb, get_answers_kb
+from questions_db_operations import init_questions_db, get_random_question_by_subject
 from dotenv import load_dotenv
 import os
 
@@ -291,6 +291,18 @@ async def handle_travel_choice(callback: types.CallbackQuery):
         await callback.answer("⚠️ Произошла ошибка", show_alert=True)
     finally:
         await callback.answer()
+
+@dp.callback_query(F.data.startswith("look_for_"))
+async def handle_looking_for(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    looking_for = callback.data.split("_")[2]
+    if looking_for == "grain" and get_current_position(user_id) == "🌾 поле":
+        question, answer, wrong1, wrong2, explanation = get_random_question_by_subject("📐 математика")
+        await callback.message.edit_text(
+            text=f"ответь на вопрос чтобы найти зерно\n{question}",
+            reply_markup=get_answers_kb(answer, wrong1, wrong2),
+            parse_mode="HTML"
+        )
 
 async def main():
     init_db()
