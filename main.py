@@ -20,7 +20,7 @@ from users_db_operations import (
     set_is_race_selected, get_is_race_selected,
     set_current_action, get_current_action,
     set_current_position, get_current_position,
-    set_question_id
+    set_question_id, get_question_id
 )
 from text_operations import load_text
 from kb_operations import (
@@ -30,7 +30,7 @@ from kb_operations import (
     get_trips_kb, get_actions_kb,
     get_answers_kb
 )
-from questions_db_operations import init_questions_db, get_random_question_by_subject
+from questions_db_operations import init_questions_db, get_random_question_by_subject, get_explanation_and_answer_by_id
 from dotenv import load_dotenv
 import os
 
@@ -304,7 +304,7 @@ async def handle_looking_for(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     looking_for = callback.data.split("_")[2]
     if looking_for == "grain" and get_current_position(user_id) == "🌾 поле":
-        question, question_id, answer, wrong1, wrong2, explanation = get_random_question_by_subject("📐 математика")
+        question, question_id, answer, wrong1, wrong2 = get_random_question_by_subject("📐 математика")
         set_question_id(user_id, question_id)
         await callback.message.edit_text(
             text=f"ответь на вопрос чтобы найти зерно\n{question}",
@@ -316,9 +316,16 @@ async def handle_looking_for(callback: types.CallbackQuery):
 async def handle_questions(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     which_answer = callback.data.split("_")[1]
+    explanation, answer = get_explanation_and_answer_by_id(get_question_id(user_id))
+    set_question_id(user_id, 0)
     if which_answer == "right":
         await callback.message.edit_text(
-            text=f"ответь на вопрос чтобы найти зерно\n{question}",
+            text=f"Верно\nПояснение: {explanation}",
+            parse_mode="HTML"
+        )
+    elif which_answer == "wrong":
+        await callback.message.edit_text(
+            text=f"Неверно\nПояснение:\n{explanation}\nПправильный ответ:\n{answer}",
             parse_mode="HTML"
         )
 
