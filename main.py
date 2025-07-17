@@ -13,16 +13,23 @@ from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import asyncio
 from aiogram.enums import ChatType
-from db_operations import (
+from users_db_operations import (
     init_db,
     add_user,
     set_race, get_race,
     set_is_race_selected, get_is_race_selected,
     set_current_action, get_current_action,
-    set_current_position, get_current_position
+    set_current_position, get_current_position,
+    set_question_id
 )
 from text_operations import load_text
-from kb_operations import get_main_kb, get_start_kb, get_start_confirme_kb, get_trips_kb, get_actions_kb, get_answers_kb
+from kb_operations import (
+    get_main_kb,
+    get_start_kb,
+    get_start_confirme_kb,
+    get_trips_kb, get_actions_kb,
+    get_answers_kb
+)
 from questions_db_operations import init_questions_db, get_random_question_by_subject
 from dotenv import load_dotenv
 import os
@@ -213,7 +220,7 @@ async def race_choice(callback: types.CallbackQuery):
 @dp.message(F.text.in_(["🎒 путешествия", "🌐 Карта", "📋 действия", "📊 Статистика"]))
 async def handle_menu_buttons(message: types.Message):
     user_id = message.from_user.id
-    if get_is_race_selected(user_id) == "❌ нет":
+    if get_is_race_selected(user_id) == "❌ нет" or get_is_race_selected(user_id) == None:
         return 0
     if message.text == "🎒 путешествия":
             await message.answer(
@@ -297,12 +304,24 @@ async def handle_looking_for(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     looking_for = callback.data.split("_")[2]
     if looking_for == "grain" and get_current_position(user_id) == "🌾 поле":
-        question, answer, wrong1, wrong2, explanation = get_random_question_by_subject("📐 математика")
+        question, question_id, answer, wrong1, wrong2, explanation = get_random_question_by_subject("📐 математика")
+        set_question_id(user_id, question_id)
         await callback.message.edit_text(
             text=f"ответь на вопрос чтобы найти зерно\n{question}",
             reply_markup=get_answers_kb(answer, wrong1, wrong2),
             parse_mode="HTML"
         )
+
+@dp.callback_query(F.data.startswith("answer_"))
+async def handle_questions(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    which_answer = callback.data.split("_")[1]
+    if which_answer == "right":
+        await callback.message.edit_text(
+            text=f"ответь на вопрос чтобы найти зерно\n{question}",
+            parse_mode="HTML"
+        )
+
 
 async def main():
     init_db()

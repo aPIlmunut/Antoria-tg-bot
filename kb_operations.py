@@ -8,7 +8,7 @@ from aiogram.types import (
     ReplyKeyboardRemove
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from db_operations import get_race, get_current_position, set_current_position
+from users_db_operations import get_race, get_current_position, set_current_position
 from random import shuffle
 
 
@@ -75,8 +75,8 @@ def get_answers_kb(answer, wrong1, wrong2):
     answers = [answer, wrong1, wrong2]
     shuffle(answers)
     right_answer_position = answers.index(answer)
-    callback_data_list = ["wrong_answer", "wrong_answer", "wrong_answer"]
-    callback_data_list[right_answer_position] = "right_answer"
+    callback_data_list = ["answer_wrong", "answer_wrong", "answer_wrong"]
+    callback_data_list[right_answer_position] = "answer_right"
     builder = InlineKeyboardBuilder()
     builder.add(
         types.InlineKeyboardButton(text=answers[0], callback_data=callback_data_list[0]),

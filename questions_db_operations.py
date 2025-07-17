@@ -10,6 +10,7 @@ def init_questions_db():
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY,
             subject TEXT DEFAULT '0',
             question TEXT DEFAULT '0',
             explanation TEXT DEFAULT '0',
@@ -23,20 +24,13 @@ def init_questions_db():
 
 
 def get_random_question_by_subject(subject):
-    """
-    Возвращает случайный вопрос, правильный ответ, два неправильных ответа и объяснение по указанному предмету
-
-    :param subject: Название предмета для фильтрации вопросов
-    :return: Кортеж (question, answer, first_wrong_answer, second_wrong_answer, explanation)
-             или None, если вопросы не найдены
-    """
     try:
         conn = sqlite3.connect('questions.db')
         cursor = conn.cursor()
 
         # Получаем все данные вопроса по предмету
         cursor.execute('''
-            SELECT question, answer, first_wrong_answer, second_wrong_answer, explanation 
+            SELECT question, id , answer, first_wrong_answer, second_wrong_answer, explanation 
             FROM questions 
             WHERE subject = ?
         ''', (subject,))

@@ -13,7 +13,8 @@ def init_db():
             race TEXT DEFAULT '0',
             is_race_selected TEXT DEFAULT '❌ нет',
             current_action TEXT DEFAULT '0',
-            current_position TEXT DEFAULT '🏰 колония'
+            current_position TEXT DEFAULT '🏰 колония',
+            question_id INTEGER DEFAULT 0
         )
     ''')
     conn.commit()
@@ -129,6 +130,31 @@ def get_current_position(user_id):
         return result[0] if result else None
     except Exception as e:
         logger.error(f'Ошибка при получении current_position для {user_id}: {e}')
+        return None
+    finally:
+        conn.close()
+
+def set_question_id(user_id, question_id):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('UPDATE users SET question_id = ? WHERE id = ?', (question_id, user_id))
+        conn.commit()
+        print(f"Пользователь {user_id} отвечает на вопрос: {question_id}")
+    except Exception as e:
+        logger.error(f'Ошибка при обновлении question_id для {user_id}: {e}')
+    finally:
+        conn.close()
+
+def get_question_id(user_id):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT question_id FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except Exception as e:
+        logger.error(f'Ошибка при получении question_id для {user_id}: {e}')
         return None
     finally:
         conn.close()
