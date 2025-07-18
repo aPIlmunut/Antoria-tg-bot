@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def init_questions_db():
-    conn = sqlite3.connect('questions.db')
+    conn = sqlite3.connect('databases/questions.db')
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS questions (
@@ -25,12 +25,12 @@ def init_questions_db():
 
 def get_random_question_by_subject(subject):
     try:
-        conn = sqlite3.connect('questions.db')
+        conn = sqlite3.connect('databases/questions.db')
         cursor = conn.cursor()
 
         # Получаем все данные вопроса по предмету
         cursor.execute('''
-            SELECT question, id , answer, first_wrong_answer, second_wrong_answer 
+            SELECT id ,subject, question, explanation, answer, first_wrong_answer, second_wrong_answer
             FROM questions 
             WHERE subject = ?
         ''', (subject,))
@@ -54,12 +54,12 @@ def get_random_question_by_subject(subject):
 
 def get_explanation_and_answer_by_id(question_id):
     try:
-        conn = sqlite3.connect('questions.db')
+        conn = sqlite3.connect('databases/questions.db')
         cursor = conn.cursor()
 
         # Получаем объяснение и правильный ответ по ID вопроса
         cursor.execute('''
-            SELECT explanation, answer 
+            SELECT id ,subject, question, explanation, answer, first_wrong_answer, second_wrong_answer 
             FROM questions 
             WHERE id = ?
         ''', (question_id,))
@@ -70,8 +70,7 @@ def get_explanation_and_answer_by_id(question_id):
             logger.warning(f"❌ Вопрос с ID: {question_id} не найден")
             return None, None
 
-        explanation, answer = result
-        return explanation, answer
+        return result
 
     except sqlite3.Error as e:
         logger.error(f"❌ Ошибка базы данных при получении объяснения и ответа: {e}")
