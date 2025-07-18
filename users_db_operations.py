@@ -90,7 +90,8 @@ def set_current_action(user_id, action):
     try:
         cursor.execute('UPDATE users SET current_action = ? WHERE id = ?', (action, user_id))
         conn.commit()
-        print(f'Пользователь {user_id} выбрал действие: {action}')
+        if action != "0":
+            print(f'Пользователь {user_id} выбрал действие: {action}')
     except Exception as e:
         logger.error(f'Ошибка при обновлении current_action для {user_id}: {e}')
     finally:
@@ -140,7 +141,8 @@ def set_question_id(user_id, question_id):
     try:
         cursor.execute('UPDATE users SET question_id = ? WHERE id = ?', (question_id, user_id))
         conn.commit()
-        print(f"Пользователь {user_id} отвечает на вопрос: {question_id}")
+        if question_id != 0:
+            print(f"Пользователь {user_id} отвечает на вопрос: {question_id}")
     except Exception as e:
         logger.error(f'Ошибка при обновлении question_id для {user_id}: {e}')
     finally:

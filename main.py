@@ -83,15 +83,21 @@ async def cmd_start(message: types.Message):
             "⚔️ Бульдоги": "pictures/bulldog_photo.jpeg",
             "🍃 листорезы": "pictures/leaf_cutter_photo.jpeg"
         }
+        action = get_current_action(user_id)
+        if action == "0": action = "нет"
+        caption = f'''
+        👋 Привет!\n
+🐜 Твоя раса: {get_race(user_id)}
+🗺 Текущее положение: {get_current_position(user_id)}
+📋 Активное действие: {action}
+        '''
         try:
             # Отправляем новое сообщение с фото и новыми кнопками
             photo_path = photo_race[get_race(user_id)]
             photo = FSInputFile(photo_path)
             await message.answer_photo(
                 photo=photo,
-                caption=f"👋 Привет!"
-                        f"\n🐜 твоя раса: {get_race(user_id)}"
-                        f"\n🗺 местонахождение: {get_current_position(user_id)}",
+                caption=caption,
                 reply_markup=get_main_kb(),
                 parse_mode="HTML"
             )
@@ -100,13 +106,19 @@ async def cmd_start(message: types.Message):
             logger.error(f"Файл {photo_path} не найден")
             # Если фото не найдено, отправляем просто текст
             await message.answer(
-                text=f"👋 Привет!"
-                     f"\n🐜 твоя раса: {get_race(user_id)}"
-                     f"\n🗺 местонахождение: {get_current_position(user_id)}",
+                text=caption,
                 reply_markup=get_main_kb(),
                 parse_mode="HTML"
             )
-
+        if get_question_id(user_id) != 0:
+            question_id, subject, question, explanation, answer, wrong1, wrong2 = get_explanation_and_answer_by_id(get_question_id(user_id))
+            if get_current_action(user_id) == "🌾 поиск зерна":
+                text = f"🌾 Ответь на вопрос, чтобы найти зерно:\n\n{question}"
+            await message.answer(
+                text=text,
+                reply_markup=get_answers_kb(answer, wrong1, wrong2),
+                parse_mode="HTML"
+            )
 
 @dp.callback_query(F.data.startswith("btn"))
 async def race_choice(callback: types.CallbackQuery):
@@ -220,7 +232,7 @@ async def race_choice(callback: types.CallbackQuery):
 @dp.message(F.text.in_(["🎒 путешествия", "🌐 Карта", "📋 действия", "📊 Статистика"]))
 async def handle_menu_buttons(message: types.Message):
     user_id = message.from_user.id
-    if get_is_race_selected(user_id) == "❌ нет" or get_is_race_selected(user_id) == None:
+    if get_is_race_selected(user_id) == "❌ нет" or get_is_race_selected(user_id) == None or get_current_action(user_id) != "0":
         return 0
     if message.text == "🎒 путешествия":
             await message.answer(
@@ -302,12 +314,15 @@ async def handle_travel_choice(callback: types.CallbackQuery):
 @dp.callback_query(F.data.startswith("look_for_"))
 async def handle_looking_for(callback: types.CallbackQuery):
     user_id = callback.from_user.id
+    if get_question_id(user_id) != 0:
+        return 0
     looking_for = callback.data.split("_")[2]
     if looking_for == "grain" and get_current_position(user_id) == "🌾 поле":
-        question, question_id, answer, wrong1, wrong2 = get_random_question_by_subject("📐 математика")
+        set_current_action(user_id, "🌾 поиск зерна")
+        question_id, subject, question, explanation, answer, wrong1, wrong2 = get_random_question_by_subject("📐 математика")
         set_question_id(user_id, question_id)
         await callback.message.edit_text(
-            text=f"ответь на вопрос чтобы найти зерно\n{question}",
+            text=f"🌾 Ответь на вопрос, чтобы найти зерно:\n\n{question}",
             reply_markup=get_answers_kb(answer, wrong1, wrong2),
             parse_mode="HTML"
         )
@@ -315,19 +330,24 @@ async def handle_looking_for(callback: types.CallbackQuery):
 @dp.callback_query(F.data.startswith("answer_"))
 async def handle_questions(callback: types.CallbackQuery):
     user_id = callback.from_user.id
+    if get_question_id(user_id) == 0:
+        return 0
     which_answer = callback.data.split("_")[1]
-    explanation, answer = get_explanation_and_answer_by_id(get_question_id(user_id))
+    question_id, subject, question, explanation, answer, wrong1, wrong2 = get_explanation_and_answer_by_id(get_question_id(user_id))
     set_question_id(user_id, 0)
+    set_current_action(user_id, "0")
     if which_answer == "right":
         await callback.message.edit_text(
-            text=f"Верно\nПояснение: {explanation}",
+            text=f"✅ Верно!\n\n💡 Пояснение:\n{explanation}",
             parse_mode="HTML"
         )
+        print(f"Пользователь {user_id} ✅ верно ответил на вопрос: {question_id}")
     elif which_answer == "wrong":
         await callback.message.edit_text(
-            text=f"Неверно\nПояснение:\n{explanation}\nПправильный ответ:\n{answer}",
+            text=f"❌ Неверно!\n\n💡 Пояснение:\n{explanation}\n\n✅ Правильный ответ:\n{answer}",
             parse_mode="HTML"
         )
+        print(f"Пользователь {user_id} ❌ неверно ответил на вопрос: {question_id}")
 
 
 async def main():
