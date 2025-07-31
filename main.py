@@ -1,4 +1,6 @@
 import logging
+import random
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
     InlineKeyboardMarkup,
@@ -21,7 +23,8 @@ from users_db_operations import (
     set_current_action, get_current_action,
     set_current_position, get_current_position,
     set_question_id, get_question_id,
-    set_grain_storage
+    set_grain_storage, get_grain_storage,
+    set_all_collecting_bonus, get_all_collecting_bonus
 )
 from text_operations import load_text
 from kb_operations import (
@@ -85,12 +88,15 @@ async def cmd_start(message: types.Message):
             "🍃 листорезы": "pictures/leaf_cutter_photo.jpeg"
         }
         action = get_current_action(user_id)
+        current_grain, max_grain, grain_str = get_grain_storage(user_id)
         if action == "0": action = "нет"
         caption = f'''
         👋 Привет!\n
-🐜 Твоя раса: {get_race(user_id)}
+🐜 Раса: {get_race(user_id)}
 🗺 Текущее положение: {get_current_position(user_id)}
 📋 Активное действие: {action}
+📦 Текущие запасы:
+          🌾 Зерно: {grain_str}
         '''
         try:
             # Отправляем новое сообщение с фото и новыми кнопками
@@ -197,6 +203,7 @@ async def race_choice(callback: types.CallbackQuery):
                       "⚔️ Бульдоги": "Клан Кровавого Жала⚔️",
                       "🍃 листорезы": "Грибную Гегемонию Атлан🍃"}
             r = race_c[get_race(user_id)]
+            if r == "Зерноградскую Империю🌾": set_all_collecting_bonus(1)
             try:
                 # Отправляем новое сообщение с фото и новыми кнопками
                 photo_path = photo_race[get_race(user_id)]
@@ -254,7 +261,7 @@ async def handle_menu_buttons(message: types.Message):
                await message.answer("❌ Не удалось загрузить карту")
                print(f"Ошибка загрузки карты: {e}")
 
-    elif message.text == "📋 действия":
+    if message.text == "📋 действия":
         await message.answer(
             text="доступные действия:",
             reply_markup=get_actions_kb(user_id),
@@ -262,7 +269,40 @@ async def handle_menu_buttons(message: types.Message):
         )
 
     elif message.text == "📊 Статистика":
-            await message.answer("Ваша статистика...")
+        photo_race = {
+            "🌾 Жнецы": "pictures/reaper_photo.jpeg",
+            "⚔️ Бульдоги": "pictures/bulldog_photo.jpeg",
+            "🍃 листорезы": "pictures/leaf_cutter_photo.jpeg"
+        }
+        action = get_current_action(user_id)
+        current_grain, max_grain, grain_str = get_grain_storage(user_id)
+        if action == "0": action = "нет"
+        caption = f'''
+🐜 Раса: {get_race(user_id)}
+🗺 Текущее положение: {get_current_position(user_id)}
+📋 Активное действие: {action}
+📦 Текущие запасы:
+          🌾 Зерно: {grain_str}
+       '''
+        try:
+            # Отправляем новое сообщение с фото и новыми кнопками
+            photo_path = photo_race[get_race(user_id)]
+            photo = FSInputFile(photo_path)
+            await message.answer_photo(
+                photo=photo,
+                caption=caption,
+                reply_markup=get_main_kb(),
+                parse_mode="HTML"
+            )
+
+        except FileNotFoundError:
+            logger.error(f"Файл {photo_path} не найден")
+            # Если фото не найдено, отправляем просто текст
+            await message.answer(
+                text=caption,
+                reply_markup=get_main_kb(),
+                parse_mode="HTML"
+            )
 
 @dp.callback_query(F.data.startswith("travel_"))
 async def handle_travel_choice(callback: types.CallbackQuery):
@@ -328,29 +368,72 @@ async def handle_looking_for(callback: types.CallbackQuery):
             parse_mode="HTML"
         )
 
+
 @dp.callback_query(F.data.startswith("answer_"))
 async def handle_questions(callback: types.CallbackQuery):
     user_id = callback.from_user.id
+
+    # Проверяем, есть ли активный вопрос у пользователя
     if get_question_id(user_id) == 0:
-        return 0
+        await callback.answer("Нет активного вопроса")
+        return
+
     which_answer = callback.data.split("_")[1]
-    question_id, subject, question, explanation, answer, wrong1, wrong2 = get_explanation_and_answer_by_id(get_question_id(user_id))
+    question_data = get_explanation_and_answer_by_id(get_question_id(user_id))
+
+    if not question_data:
+        await callback.answer("Ошибка: вопрос не найден")
+        return
+
+    question_id, subject, question, explanation, answer, wrong1, wrong2 = question_data
+
+    # Сбрасываем ID текущего вопроса
     set_question_id(user_id, 0)
-    set_current_action(user_id, "0")
+
     if which_answer == "right":
         await callback.message.edit_text(
             text=f"✅ Верно!\n\n💡 Пояснение:\n{explanation}",
             parse_mode="HTML"
         )
         print(f"Пользователь {user_id} ✅ верно ответил на вопрос: {question_id}")
-        set_grain_storage(user_id,5)
+
+        # Получаем текущее действие пользователя
+        current_action = get_current_action(user_id)
+
+        # Проверяем, соответствует ли действие поиску зерна
+        if current_action == "🌾 поиск зерна":
+            bonus = get_all_collecting_bonus(user_id)
+            current_grain, max_grain, grain_str = get_grain_storage(user_id)
+            amount = random.randint(1, 5) + bonus
+            if amount + current_grain > max_grain: set_grain_storage(user_id, max_grain)
+            else: set_grain_storage(user_id, amount + current_grain)
+            current_grain, max_grain, grain_str = get_grain_storage(user_id)
+            try:
+                photo = FSInputFile("pictures/grain.jpeg")
+                await callback.message.answer_photo(
+                    photo=photo,
+                    caption=f"🎉 Поздравляем! Вы нашли {amount} единиц зерна! 🌾\n📦 Текущие запасы: {grain_str} ✅",
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                print(f"Ошибка при отправке фото: {e}")
+                await callback.message.answer(
+                    text=f"🎉 Поздравляем! Вы нашли {amount} единиц зерна! 🌾\n📦 Текущие запасы: {grain_str} ✅",
+                    parse_mode="HTML"
+                )
+
+        # Сбрасываем текущее действие после награды
+        set_current_action(user_id, "0")
+
     elif which_answer == "wrong":
         await callback.message.edit_text(
             text=f"❌ Неверно!\n\n💡 Пояснение:\n{explanation}\n\n✅ Правильный ответ:\n{answer}",
             parse_mode="HTML"
         )
         print(f"Пользователь {user_id} ❌ неверно ответил на вопрос: {question_id}")
+        set_current_action(user_id, "0")
 
+    await callback.answer()
 
 async def main():
     init_db()

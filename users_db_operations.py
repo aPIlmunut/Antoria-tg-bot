@@ -15,7 +15,8 @@ def init_db():
             current_action TEXT DEFAULT '0',
             current_position TEXT DEFAULT '🏰 колония',
             question_id INTEGER DEFAULT 0,
-            grain_storage TEXT DAFAULT "0/10"
+            grain_storage TEXT DAFAULT "0/10",
+            all_collecting_bonus INTEGER DEFAULT 0
         )
     ''')
     conn.commit()
@@ -196,6 +197,52 @@ def set_grain_storage(user_id, current_amount=None, max_capacity=None):
 
     except Exception as e:
         logger.error(f'Ошибка при установке grain_storage для {user_id}: {e}')
+        return None
+    finally:
+        conn.close()
+
+
+def get_grain_storage(user_id):
+    conn = sqlite3.connect('databases/users.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT grain_storage FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+
+        if result and result[0]:
+            current, max_capacity = map(int, result[0].split('/'))
+            return current, max_capacity, result[0]
+        else:
+            # Возвращаем значения по умолчанию (0/10)
+            return 0, 10, "0/10"
+
+    except Exception as e:
+        logger.error(f'Ошибка при получении grain_storage для {user_id}: {e}')
+        return 0, 10, "0/10"  # Возвращаем дефолтные значения при ошибке
+    finally:
+        conn.close()
+
+def set_all_collecting_bonus(user_id, bonus):
+    conn = sqlite3.connect('databases/users.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('UPDATE users SET all_collecting_bonus = ? WHERE id = ?', (bonus, user_id))
+        conn.commit()
+        print(f"Бонус для сбора всех ресурсов у {user_id} установлен на: {bonus}")
+    except Exception as e:
+        logger.error(f'Ошибка при обновлении all_collecting_bonus для {user_id}: {e}')
+    finally:
+        conn.close()
+
+def get_all_collecting_bonus(user_id):
+    conn = sqlite3.connect('databases/users.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT all_collecting_bonus FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except Exception as e:
+        logger.error(f'Ошибка при получении all_collecting_bonus для {user_id}: {e}')
         return None
     finally:
         conn.close()
